@@ -13,5 +13,5 @@ npm i -g parcel-bundler
 #### 실행
 
 ```
-parcel index.html
+npm run dev
 ```

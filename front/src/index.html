@@ -5,12 +5,23 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Document</title>
+    <style>
+      .user-video {
+        transform: rotateY(180deg);
+        -webkit-transform: rotateY(180deg); /* Safari and Chrome */
+        -moz-transform: rotateY(180deg); /* Firefox */
+      }
+      .videos {
+        display: flex;
+      }
+    </style>
   </head>
   <body>
-    <video id="video" width="720" height="480"></video>
+    <div class="videos">
+      <video class="user-video" autoplay width="360" height="240"></video>
+    </div>
     <button class="video-toggle" value="on">영상 끄기</button>
     <button class="audio-toggle" value="on">음성 끄기</button>
-    <select id="availableCameras"></select>
     <script src="index.js"></script>
   </body>
 </html>

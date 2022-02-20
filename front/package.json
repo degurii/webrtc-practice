@@ -4,11 +4,13 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "dev": "parcel src/index.html",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@fxts/core": "^0.5.0"
+    "@fxts/core": "^0.5.0",
+    "socket.io-client": "^4.4.1"
   }
 }
