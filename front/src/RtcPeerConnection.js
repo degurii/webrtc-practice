@@ -1,5 +1,4 @@
-import { pipe, curry } from '@fxts/core';
-import { getMediaStream } from './media';
+import { curry } from '@fxts/core';
 
 const peerConnectionPool = {};
 const pcConfig = {
@@ -17,17 +16,20 @@ const pcConfig = {
   ],
 };
 const sdpOption = {};
-const handler = {};
+const eventHandler = {};
+let afterCreate;
+let localMediaStream;
 
 const createPeerConnection = id => {
   const pc = (peerConnectionPool[id] = new RTCPeerConnection(pcConfig));
-  Object.entries(handler).forEach(
-    ([event, handler]) => (pc[event] = handler(id)),
+  afterCreate(id);
+  localMediaStream
+    .getTracks()
+    .forEach(track => pc.addTrack(track, localMediaStream));
+  Object.entries(eventHandler).forEach(([event, handler]) =>
+    pc.addEventListener(event, handler(id)),
   );
-  getMediaStream().then(stream =>
-    stream.getTracks().forEach(track => pc.addTrack(track, stream)),
-  );
-
+  console.log(`PeerConnection[${id}] created`);
   return pc;
 };
 
@@ -36,11 +38,15 @@ const getPeerConnection = id => {
   return createPeerConnection(id);
 };
 
-export const setOnIceCandidateHandler = cb => (handler.onicecandidate = cb);
-export const setOnTrackHandler = cb => (handler.ontrack = cb);
+export const setLocalMediaStream = stream => (localMediaStream = stream);
+export const setOnIceCandidateHandler = cb => (eventHandler.icecandidate = cb);
+export const setOnTrackHandler = cb => (eventHandler.track = cb);
+export const setOnConnectionStateChangeHandler = cb =>
+  (eventHandler.connectionstatechange = cb);
+export const setAfterCreate = cb => (afterCreate = cb);
 
 export const closePeerConnection = id => {
-  peerConnection[id].close();
+  peerConnectionPool[id].close();
   delete peerConnectionPool[id];
 };
 export const setLocalDescription = curry((id, sdp) =>
@@ -53,6 +59,10 @@ export const setRemoteDescription = curry((id, sdp) =>
 
 export const addIceCandidate = curry((id, candidate) =>
   getPeerConnection(id).addIceCandidate(candidate),
+);
+
+export const addTrack = curry((id, track) =>
+  getPeerConnection(id).addTrack(track),
 );
 
 export const createOffer = id => getPeerConnection(id).createOffer(sdpOption);

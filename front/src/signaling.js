@@ -7,8 +7,12 @@ import {
   createOffer,
   createAnswer,
   addIceCandidate,
-} from './rtc-peer-connection';
+  setOnTrackHandler,
+  setLocalMediaStream,
+  setAfterCreate,
+} from './RtcPeerConnection';
 import { pipe, curry, tap } from '@fxts/core';
+import { ADD_USER, REMOVE_USER, UPDATE_USER } from './reducer';
 
 const sendOffer = curry((destinationSocketId, offer) =>
   emit('offer', { destinationSocketId, offer }),
@@ -22,7 +26,7 @@ const sendCandidate = curry((destinationSocketId, candidate) =>
   emit('candidate', { destinationSocketId, candidate }),
 );
 
-const signalLocalOffer = remoteSocketId =>
+const signalProcessLocalOffer = remoteSocketId =>
   pipe(
     remoteSocketId,
     createOffer,
@@ -30,7 +34,7 @@ const signalLocalOffer = remoteSocketId =>
     sendOffer(remoteSocketId),
   );
 
-const signalLocalAnswer = remoteSocketId =>
+const signalProcessLocalAnswer = remoteSocketId =>
   pipe(
     remoteSocketId,
     createAnswer,
@@ -38,29 +42,38 @@ const signalLocalAnswer = remoteSocketId =>
     sendAnswer(remoteSocketId),
   );
 
-export const setupSignaling = () => {
+export const setupSignaling = curry((state, dispatch, localMediaStream) => {
+  console.log('start signaling');
   setOnIceCandidateHandler(
-    remoteSocketId => evt => (
-      console.log('onicehandler:', evt),
-      evt.candidate && sendCandidate(remoteSocketId, evt.candidate)
-    ),
+    remoteSocketId => evt =>
+      evt.candidate && sendCandidate(remoteSocketId, evt.candidate),
   );
+  setOnTrackHandler(
+    remoteSocketId => evt =>
+      dispatch({
+        type: UPDATE_USER,
+        payload: { id: remoteSocketId, stream: evt.streams[0] },
+      }),
+  );
+  setLocalMediaStream(localMediaStream);
+  setAfterCreate(remoteSocketId => {
+    dispatch(ADD_USER, { id: remoteSocketId });
+  });
 
-  on('join', ({ sourceSocketId }) => signalLocalOffer(sourceSocketId));
+  on('join', ({ sourceSocketId }) => signalProcessLocalOffer(sourceSocketId));
 
-  on('close', ({ sourceSocketId }) => closePeerConnection(sourceSocketId));
+  on('close', ({ sourceSocketId }) => {
+    closePeerConnection(sourceSocketId);
+    dispatch({ type: REMOVE_USER, payload: sourceSocketId });
+  });
 
-  on(
-    'candidate',
-    ({ sourceSocketId, candidate }) => (
-      console.log('candidate from:', sourceSocketId),
-      addIceCandidate(sourceSocketId, candidate)
-    ),
+  on('candidate', ({ sourceSocketId, candidate }) =>
+    addIceCandidate(sourceSocketId, candidate),
   );
 
   on('offer', ({ sourceSocketId, offer }) => {
     setRemoteDescription(sourceSocketId, offer);
-    signalLocalAnswer(sourceSocketId);
+    signalProcessLocalAnswer(sourceSocketId);
   });
 
   on('answer', ({ sourceSocketId, answer }) =>
@@ -68,4 +81,4 @@ export const setupSignaling = () => {
   );
 
   emit('join');
-};
+});

@@ -13,7 +13,7 @@ io.on('connection', socket => {
     socket.broadcast.emit('join', { sourceSocketId: socket.id });
   });
   socket.on('disconnect', () => {
-    console.log(`[${socket.id}] disconnected!!`);
+    socket.broadcast.emit('close', { sourceSocketId: socket.id });
   });
   socket.on('offer', ({ destinationSocketId, offer }) => {
     socket.broadcast
