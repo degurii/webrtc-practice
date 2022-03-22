@@ -14,16 +14,16 @@ import {
 import { pipe, curry, tap } from '@fxts/core';
 import { ADD_USER, REMOVE_USER, UPDATE_USER } from './reducer';
 
-const sendOffer = curry((destinationSocketId, offer) =>
-  emit('offer', { destinationSocketId, offer }),
+const sendOffer = curry((to, offer) =>
+  emit('offer', { to, sdp: offer, type: 'offer' }),
 );
 
-const sendAnswer = curry((destinationSocketId, answer) =>
-  emit('answer', { destinationSocketId, answer }),
+const sendAnswer = curry((to, answer) =>
+  emit('answer', { to, sdp: answer, type: 'answer' }),
 );
 
-const sendCandidate = curry((destinationSocketId, candidate) =>
-  emit('candidate', { destinationSocketId, candidate }),
+const sendCandidate = curry((to, candidate) =>
+  emit('candidate', { to, candidate, type: 'candidate' }),
 );
 
 const signalProcessLocalOffer = remoteSocketId =>
@@ -60,25 +60,25 @@ export const setupSignaling = curry((state, dispatch, localMediaStream) => {
     dispatch(ADD_USER, { id: remoteSocketId });
   });
 
-  on('join', ({ sourceSocketId }) => signalProcessLocalOffer(sourceSocketId));
+  on('join', ({ from }) => signalProcessLocalOffer(from));
 
-  on('close', ({ sourceSocketId }) => {
-    closePeerConnection(sourceSocketId);
-    dispatch({ type: REMOVE_USER, payload: sourceSocketId });
+  on('close', ({ from }) => {
+    closePeerConnection(from);
+    dispatch({ type: REMOVE_USER, payload: from });
   });
 
-  on('candidate', ({ sourceSocketId, candidate }) =>
-    addIceCandidate(sourceSocketId, candidate),
+  on('candidate', ({ from, candidate, type }) =>
+    addIceCandidate(from, candidate),
   );
 
-  on('offer', ({ sourceSocketId, offer }) => {
-    setRemoteDescription(sourceSocketId, offer);
-    signalProcessLocalAnswer(sourceSocketId);
+  on('offer', ({ from, sdp: offer, type }) => {
+    setRemoteDescription(from, offer);
+    signalProcessLocalAnswer(from);
   });
 
-  on('answer', ({ sourceSocketId, answer }) =>
-    setRemoteDescription(sourceSocketId, answer),
+  on('answer', ({ from, sdp: answer, type }) =>
+    setRemoteDescription(from, answer),
   );
 
-  emit('join');
+  emit('join', { type: 'join' });
 });
